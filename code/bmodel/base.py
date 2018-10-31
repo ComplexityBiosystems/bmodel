@@ -50,7 +50,7 @@ class Bmodel(object):
         new_ss = []
         new_energies = []
         for _ in range(int(n_runs)):
-            convergence, s, H, UH = self._run()
+            convergence, s, H, UH, ic = self._run()
             if convergence:
                 # these two are pd.Series so we better
                 # store them in a temporal list and
@@ -60,6 +60,7 @@ class Bmodel(object):
                 # these two are lists so it doesn't hurt to append now
                 self.H_paths.append(H)
                 self.UH_paths.append(UH)
+                self.initial_conditions.append(ic)
 
         self.ss = self.ss.append(
             pd.DataFrame(new_ss, columns=self.node_labels),
@@ -78,7 +79,7 @@ class Bmodel(object):
         return convergence, s, H, UH
         """
         s = np.random.choice([-1, 1], size=(self.N))
-        self.initial_conditions.append(s)
+        ic = s.copy()
         e = -s@(self.J@s)
         H = [e]
         UH = [e]
@@ -103,4 +104,4 @@ class Bmodel(object):
                 e = -s@(self.J@s)
                 H.append(e)
 
-        return convergence, s, H, UH
+        return convergence, s, H, UH, ic

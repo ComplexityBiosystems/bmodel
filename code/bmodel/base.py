@@ -30,18 +30,20 @@ class Bmodel(object):
 
         # deal with named nodes
         if node_labels is None:
-            node_labels = range(len(N))
-            
+            node_labels = range(N)
+        self.node_labels = node_labels
+
         # store stuff
         self.J = J
         self.A = A
         self.N = N
         self.maxT = maxT
         self.total_runs = 0
-        self.ss = pd.DataFrame(columns=range(self.N), dtype=int)
+        self.ss = pd.DataFrame(columns=node_labels, dtype=int)
         self.energies = pd.Series(dtype=int)
         self.H_paths = []
         self.UH_paths = []
+        self.initial_conditions = []
 
     def runs(self, n_runs=100):
         """Find many steady states starting from random initial conditions."""
@@ -59,7 +61,9 @@ class Bmodel(object):
                 self.H_paths.append(H)
                 self.UH_paths.append(UH)
 
-        self.ss = self.ss.append(pd.DataFrame(new_ss), ignore_index=True)
+        self.ss = self.ss.append(
+            pd.DataFrame(new_ss, columns=self.node_labels),
+            ignore_index=True)
         self.energies = self.energies.append(
             pd.Series(new_energies),
             ignore_index=True)
@@ -74,7 +78,8 @@ class Bmodel(object):
         return convergence, s, H, UH
         """
         s = np.random.choice([-1, 1], size=(self.N))
-        e = -s@(self.A@s)
+        self.initial_conditions.append(s)
+        e = -s@(self.J@s)
         H = [e]
         UH = [e]
         convergence = False
@@ -87,7 +92,7 @@ class Bmodel(object):
 
             if s[k] != sk_new:
                 s[k] = sk_new
-                e = -s@(self.A@s)
+                e = -s@(self.J@s)
                 H.append(e)
                 UH.append(e)
                 # check convergence
@@ -95,7 +100,7 @@ class Bmodel(object):
                     convergence = True
                     break
             else:
-                e = -s@(self.A@s)
+                e = -s@(self.J@s)
                 H.append(e)
 
         return convergence, s, H, UH

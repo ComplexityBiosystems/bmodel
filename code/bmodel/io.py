@@ -33,7 +33,8 @@ def topo2interaction(path):
     tmp = table[["Source", "Target"]].values.reshape(-1)
     node_labels = sorted(list(set(tmp)))
     N = len(node_labels)
-    label2idx = {v: k for k, v in dict(enumerate(node_labels)).items()}
+    idx2label = dict(enumerate(node_labels))
+    label2idx = {v: k for k, v in idx2label.items()}
 
     # dict to convert topo to J representation
     T2J_dict = {1: 1, 2: -1}
@@ -47,4 +48,4 @@ def topo2interaction(path):
         i = label2idx[v]
         J[i, j] = T2J_dict[t]
 
-    return J
+    return J, np.array(node_labels)

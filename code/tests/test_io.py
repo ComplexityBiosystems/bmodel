@@ -31,14 +31,23 @@ def datadir(tmpdir, request):
     return tmpdir
 
 
-def test_io_topo2interaction(datadir):
+def test_io_topo2interaction_J(datadir):
     """Test if we can convert a topo file to an interaction matrix."""
     # path to topo file in tmpdir
     path = datadir.join('neg_feedback.topo')
-    J = topo2interaction(path)
+    J, _ = topo2interaction(path)
     expected_J = np.array([[1, -1],
                            [-1, 1]])
     assert np.all(J == expected_J)
+
+
+def test_io_topo2interaction_nodelabels(datadir):
+    """Test if we can convert a topo file to an interaction matrix."""
+    # path to topo file in tmpdir
+    path = datadir.join('neg_feedback.topo')
+    _, node_labels = topo2interaction(path)
+    expected_node_labels = np.array(["A", "B"])
+    assert np.all(node_labels == expected_node_labels)
 
 
 def test_io_topo2interaction_noheader(datadir):

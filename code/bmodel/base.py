@@ -9,7 +9,7 @@ import pandas as pd
 from .utils import check_interaction_matrix
 
 
-class Bmodel(object):
+class Bmodel():
     """Main class holding a Boolean Model."""
 
     def __init__(self, maxT=1000, J=None, node_labels=None):
@@ -85,7 +85,7 @@ class Bmodel(object):
         UH = [e]
         convergence = False
 
-        for i in range(int(self.maxT)):
+        for _ in range(int(self.maxT)):
             # update rule
             k = np.random.choice(range(self.N))
 

@@ -72,13 +72,30 @@ class Bmodel():
         # to keep track of convergence probability
         self.total_runs += n_runs
 
-    def _run(self):
+    def _run(self,
+             initial_condition=None,
+             can_be_updated=None):
         """
-        Find one steady state starting from random initial conditions.
+        Find one steady state.
+
+        Parameters
+        ----------
+        initial_condition: np.array(N,)
+            Initial condition. Defaults to random.
+        can_be_updated: list-like
+            Nodes that can be updated. OE/KD nodes cannot be updated.
 
         return convergence, s, H, UH
+
         """
-        s = np.random.choice([-1, 1], size=(self.N))
+        if initial_condition is None:
+            initial_condition = np.random.choice([-1, 1], size=(self.N))
+        else:
+            assert len(initial_condition.shape) == 1
+            assert len(initial_condition) == self.N
+        if can_be_updated is None:
+            can_be_updated = range(self.N)
+        s = initial_condition
         ic = s.copy()
         e = -s@(self.J@s)
         H = [e]
@@ -87,7 +104,7 @@ class Bmodel():
 
         for _ in range(int(self.maxT)):
             # update rule
-            k = np.random.choice(range(self.N))
+            k = np.random.choice(can_be_updated)
 
             sk_new = np.sign((self.A@s)[k])
 

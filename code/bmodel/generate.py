@@ -14,14 +14,19 @@ def random_interaction_matrix(N=100, avk=3, mu=0.8, connected=True):
 
     Parameters
     ----------
-    N : int
+    N: int
         System size.
     avk : float
         Average degree.
-    mu : float
+    mu: float
         Fraction of positive to non-zero entries.
-    connected : bool
+    connected: bool
         Imposes a network with a single connected component
+
+    Returns
+    -------
+    J: np.array(N, N)
+        Interaction matrix.
 
     """
     # edge density parameters

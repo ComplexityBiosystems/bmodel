@@ -44,6 +44,7 @@ class Bmodel():
         self.H_paths = []
         self.UH_paths = []
         self.initial_conditions = []
+        self.perturbations = []
 
     def runs(self, n_runs=100):
         """Find many steady states starting from random initial conditions."""
@@ -71,6 +72,67 @@ class Bmodel():
 
         # to keep track of convergence probability
         self.total_runs += n_runs
+
+    def perturbe(
+        self,
+        steady_state=None,
+        node_to_switch=None,
+        switch_to=None,
+        n_runs=100
+    ):
+        """
+        Perturbe a steady states by switching a node.
+
+        Parameters
+        ----------
+        node_to_switch: str
+            Label of the node switched.
+
+        """
+        ic = np.array(steady_state)
+        # check dimensions
+        assert len(ic.shape) == 1
+        assert len(ic) == self.N
+        # check that we are switching to ON or OFF
+        assert switch_to in ["ON", "OFF"]
+        # check that the state is steady
+        assert np.all((ic - np.sign(self.A@ic)) == 0)
+
+        # do the switch
+        i = np.argmin(self.node_labels == node_to_switch)
+        if switch_to == "ON":
+            ic[i] = 1
+        elif switch_to == "OFF":
+            ic[i] = -1
+        else:
+            raise RuntimeError("Value of 'switch_to' not recognized.")
+
+        # find wich nodes can be updated
+        can_be_updated = [i for i, x in enumerate(self.node_labels)
+                          if x != node_to_switch]
+        # dict to hold data
+        output = {
+            "initial_condition": steady_state,
+            "sample_size": 0,
+            "requested_sample_size": n_runs,
+            "ss": [],
+            "energy_paths": [],
+            "unique_energy_paths": []
+        }
+        for _ in range(n_runs):
+            _, s, H, UH, _ = self._run(
+                initial_condition=steady_state,
+                can_be_updated=can_be_updated
+                )
+            # convergence does not take into account the blocked node
+            would_not_change = s == np.sign(self.A@s)
+            convergence = np.all(would_not_change[can_be_updated])
+            if convergence:
+                output["ss"].append(s)
+                output["energy_paths"].append(H)
+                output["unique_energy_paths"].append(UH)
+                output["sample_size"] += 1
+        return output
 
     def _run(self,
              initial_condition=None,
@@ -114,7 +176,7 @@ class Bmodel():
                 H.append(e)
                 UH.append(e)
                 # check convergence
-                if np.all((s - np.sign(self.A@s)) == 0):
+                if np.all(((s - np.sign(self.A@s)) == 0)[can_be_updated]):
                     convergence = True
                     break
             else:

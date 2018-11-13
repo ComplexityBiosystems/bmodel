@@ -14,8 +14,7 @@ def bmodel_neg_feedback():
     """Create simple network for testing."""
     J = np.array([[0, -1], [-1, 0]])
     node_labels = ["node0", "node1"]
-    bmodel = Bmodel(J=J, node_labels=node_labels)
-    bmodel.runs(10)
+    bmodel = Bmodel(J=J, node_labels=node_labels, maxT=100)
     return bmodel
 
 
@@ -27,7 +26,14 @@ def test_base_bmodel_init():
 
 
 def test_base_bmodel_node_labels(bmodel_neg_feedback):
-    """A."""
+    """Test that node labels are correctly passed onto the model."""
     bmodel = bmodel_neg_feedback
     for a, b in zip(list(bmodel.ss.columns), bmodel.node_labels):
         assert a == b
+
+
+def test_base_bmodel_runs(bmodel_neg_feedback):
+    """Test that the model can run simulations."""
+    bmodel = bmodel_neg_feedback
+    bmodel.runs(20)
+    assert len(bmodel.ss) > 0

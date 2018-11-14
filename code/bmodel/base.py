@@ -44,7 +44,10 @@ class Bmodel():
         self.H_paths = []
         self.UH_paths = []
         self.initial_conditions = []
-        self.perturbations = []
+        self.perturbations_ic = pd.DataFrame(columns=node_labels, dtype=int)
+        self.perturbations_ss = pd.DataFrame(columns=node_labels, dtype=int)
+        self.perturbations_meta = pd.DataFrame(
+            columns=["switched_node", "switched_to"])
 
     def runs(self, n_runs=100):
         """Find many steady states starting from random initial conditions."""
@@ -75,7 +78,7 @@ class Bmodel():
 
     def perturbe(
         self,
-        steady_state=None,
+        initial_condition=None,
         node_to_switch=None,
         switch_to=None,
         n_runs=100
@@ -89,7 +92,7 @@ class Bmodel():
             Label of the node switched.
 
         """
-        ic = np.array(steady_state)
+        ic = np.array(initial_condition)
         # check dimensions
         assert len(ic.shape) == 1
         assert len(ic) == self.N
@@ -110,29 +113,44 @@ class Bmodel():
         # find wich nodes can be updated
         can_be_updated = [i for i, x in enumerate(self.node_labels)
                           if x != node_to_switch]
-        # dict to hold data
-        output = {
-            "initial_condition": steady_state,
-            "sample_size": 0,
-            "requested_sample_size": n_runs,
-            "ss": [],
-            "energy_paths": [],
-            "unique_energy_paths": []
-        }
+        # lists to hold data
+        initial_conditions = []
+        steady_states = []
+        metadata = []
         for _ in range(n_runs):
             _, s, H, UH, _ = self._run(
-                initial_condition=steady_state,
+                initial_condition=initial_condition,
                 can_be_updated=can_be_updated
-                )
+            )
             # convergence does not take into account the blocked node
             would_not_change = s == np.sign(self.A@s)
             convergence = np.all(would_not_change[can_be_updated])
             if convergence:
-                output["ss"].append(s)
-                output["energy_paths"].append(H)
-                output["unique_energy_paths"].append(UH)
-                output["sample_size"] += 1
-        return output
+                initial_conditions.append(initial_condition)
+                steady_states.append(s)
+                metadata.append([node_to_switch, switch_to])
+
+        # add new gathered perturbation data to bmodel class
+        new_perturbations_ic = pd.DataFrame(
+            initial_conditions,
+            columns=self.node_labels,
+            dtype=int)
+        new_perturbations_ss = pd.DataFrame(
+            steady_states,
+            columns=self.node_labels,
+            dtype=int)
+        new_perturbations_meta = pd.DataFrame(
+            metadata,
+            columns=["switched_node", "switched_to"])
+        self.perturbations_ic = self.perturbations_ic.append(
+            new_perturbations_ic,
+            ignore_index=True)
+        self.perturbations_ss = self.perturbations_ss.append(
+            new_perturbations_ss,
+            ignore_index=True)
+        self.perturbations_meta = self.perturbations_meta.append(
+            new_perturbations_meta,
+            ignore_index=True)
 
     def _run(self,
              initial_condition=None,

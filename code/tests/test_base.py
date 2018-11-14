@@ -37,3 +37,54 @@ def test_base_bmodel_runs(bmodel_neg_feedback):
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
     assert len(bmodel.ss) > 0
+
+
+def test_base_bmodel_perturbe_ss(bmodel_neg_feedback):
+    """Test that the model can run simulations."""
+    bmodel = bmodel_neg_feedback
+    bmodel.runs(20)
+    n_runs = 3
+    config = bmodel.ss.values[0]
+    for node_to_switch in bmodel.node_labels:
+        for switch_to in ["ON", "OFF"]:
+            bmodel.perturbe(
+                initial_condition=config,
+                node_to_switch=node_to_switch,
+                switch_to=switch_to,
+                n_runs=n_runs
+            )
+    assert bmodel.perturbations_ss.shape == (n_runs * bmodel.N * 2, bmodel.N)
+
+
+def test_base_bmodel_perturbe_ic(bmodel_neg_feedback):
+    """Test that the model can run simulations."""
+    bmodel = bmodel_neg_feedback
+    bmodel.runs(20)
+    n_runs = 3
+    config = bmodel.ss.values[0]
+    for node_to_switch in bmodel.node_labels:
+        for switch_to in ["ON", "OFF"]:
+            bmodel.perturbe(
+                initial_condition=config,
+                node_to_switch=node_to_switch,
+                switch_to=switch_to,
+                n_runs=n_runs
+            )
+    assert bmodel.perturbations_ic.shape == (n_runs * bmodel.N * 2, bmodel.N)
+
+
+def test_base_bmodel_perturbe_meta(bmodel_neg_feedback):
+    """Test that the model can run simulations."""
+    bmodel = bmodel_neg_feedback
+    bmodel.runs(20)
+    n_runs = 3
+    config = bmodel.ss.values[0]
+    for node_to_switch in bmodel.node_labels:
+        for switch_to in ["ON", "OFF"]:
+            bmodel.perturbe(
+                initial_condition=config,
+                node_to_switch=node_to_switch,
+                switch_to=switch_to,
+                n_runs=n_runs
+            )
+    assert bmodel.perturbations_meta.shape == (n_runs * bmodel.N * 2, 2)

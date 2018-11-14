@@ -29,7 +29,7 @@ def test_base_bmodel_init():
 def test_base_bmodel_node_labels(bmodel_neg_feedback):
     """Test that node labels are correctly passed onto the model."""
     bmodel = bmodel_neg_feedback
-    for a, b in zip(list(bmodel.ss.columns), bmodel.node_labels):
+    for a, b in zip(list(bmodel.steady_states.columns), bmodel.node_labels):
         assert a == b
 
 
@@ -37,7 +37,7 @@ def test_base_bmodel_runs(bmodel_neg_feedback):
     """Test that the model can run simulations."""
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
-    assert len(bmodel.ss) > 0
+    assert len(bmodel.steady_states) > 0
 
 
 def test_base_bmodel_initial_conditions(bmodel_neg_feedback):
@@ -48,7 +48,7 @@ def test_base_bmodel_initial_conditions(bmodel_neg_feedback):
         bmodel._initial_conditions,
         columns=bmodel.node_labels
     )
-    assert df_ic.mean().abs().max() < 0.05
+    assert df_ic.mean().abs().max() < 0.1
 
 
 def test_base_bmodel_perturbe_ss(bmodel_neg_feedback):
@@ -56,7 +56,7 @@ def test_base_bmodel_perturbe_ss(bmodel_neg_feedback):
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
     n_runs = 3
-    config = bmodel.ss.values[0]
+    config = bmodel.steady_states.values[0]
     for node_to_switch in bmodel.node_labels:
         for switch_to in ["ON", "OFF"]:
             bmodel.perturbe(
@@ -73,7 +73,7 @@ def test_base_bmodel_perturbe_ic(bmodel_neg_feedback):
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
     n_runs = 3
-    config = bmodel.ss.values[0]
+    config = bmodel.steady_states.values[0]
     for node_to_switch in bmodel.node_labels:
         for switch_to in ["ON", "OFF"]:
             bmodel.perturbe(
@@ -90,7 +90,7 @@ def test_base_bmodel_perturbe_meta(bmodel_neg_feedback):
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
     n_runs = 3
-    config = bmodel.ss.values[0]
+    config = bmodel.steady_states.values[0]
     for node_to_switch in bmodel.node_labels:
         for switch_to in ["ON", "OFF"]:
             bmodel.perturbe(

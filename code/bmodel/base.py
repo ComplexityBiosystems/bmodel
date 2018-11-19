@@ -6,6 +6,7 @@ Oct 2018
 """
 import numpy as np
 import pandas as pd
+
 from .utils import check_interaction_matrix
 
 

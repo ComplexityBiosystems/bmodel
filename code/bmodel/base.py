@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .utils import check_interaction_matrix
+from .io import topo2interaction
 
 
 class Bmodel():
@@ -52,6 +53,11 @@ class Bmodel():
         self._perturbations_ss = pd.DataFrame(columns=node_labels, dtype=int)
         self._perturbations_meta = pd.DataFrame(
             columns=["switched_node", "switched_to"])
+
+    @staticmethod
+    def from_topo(topo_file, maxT=1000):
+        J, node_labels = topo2interaction(path=topo_file)
+        return Bmodel(J=J, node_labels=node_labels, maxT=maxT)
 
     def runs(self, n_runs=100):
         """Find many steady states starting from random initial conditions."""

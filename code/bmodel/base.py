@@ -22,6 +22,7 @@ def run_jit(
     initial_condition=None,
     can_be_updated=None,
 ):
+    """fast thanks tu numba"""
     if initial_condition is None:
         initial_condition = np.random.choice(
             np.array([-1., 1.]),
@@ -67,6 +68,7 @@ def run_fast_jit(
     initial_condition=None,
     can_be_updated=None,
 ):
+    """even faster, because energies are not computed"""
     if initial_condition is None:
         initial_condition = np.random.choice(
             np.array([-1., 1.]),

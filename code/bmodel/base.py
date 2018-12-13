@@ -10,6 +10,86 @@ import pandas as pd
 from .utils import check_interaction_matrix
 from .io import topo2interaction
 
+from numba import jit
+
+
+@jit(nopython=True)
+def run_jit(
+    N: int,
+    J: np.array,
+    J_pseudo: np.array,
+    maxT: int,
+    initial_condition=None,
+    can_be_updated=None,
+):
+    if initial_condition is None:
+        initial_condition = np.random.choice(
+            np.array([-1., 1.]),
+            size=N)
+    else:
+        assert len(initial_condition.shape) == 1
+        assert len(initial_condition) == N
+    s = initial_condition.copy()
+    ic = s.copy()
+    e = -1*s@(J@s)
+    H = [e]
+    UH = [e]
+    convergence = False
+    for _ in range(int(maxT)):
+        # update rule
+        k = np.random.choice(can_be_updated)
+
+        sk_new = np.sign((J_pseudo@s)[k])
+
+        if s[k] != sk_new:
+            s[k] = sk_new
+            e = -1*s@(J@s)
+            H.append(e)
+            UH.append(e)
+            # check convergence
+            if np.all(((s - np.sign(J_pseudo@s)) == 0)[can_be_updated]):
+                convergence = True
+                return convergence, s, H, UH, ic
+
+        else:
+            e = -1*s@(J@s)
+            H.append(e)
+
+    return convergence, s, H, UH, ic
+
+
+@jit(nopython=True)
+def run_fast_jit(
+    N: int,
+    J: np.array,
+    J_pseudo: np.array,
+    maxT: int,
+    initial_condition=None,
+    can_be_updated=None,
+):
+    if initial_condition is None:
+        initial_condition = np.random.choice(
+            np.array([-1., 1.]),
+            size=N)
+    else:
+        assert len(initial_condition.shape) == 1
+        assert len(initial_condition) == N
+    s = initial_condition.copy()
+    ic = s.copy()
+    convergence = False
+
+    for _ in range(maxT):
+        k = np.random.choice(can_be_updated)
+        sk_new = np.sign((J_pseudo@s)[k])
+
+        if s[k] != sk_new:
+            s[k] = sk_new
+            # check convergence
+            if np.all(((s - np.sign(J_pseudo@s)) == 0)[can_be_updated]):
+                convergence = True
+                return convergence, s, None, None, ic
+    return convergence, s, None, None, ic
+
 
 class Bmodel():
     """Main class holding a Boolean Model."""
@@ -36,7 +116,7 @@ class Bmodel():
         # deal with named nodes
         if node_labels is None:
             node_labels = range(num_nodes)
-        self.node_labels = node_labels
+        self.node_labels = np.array(node_labels)
 
         # store stuff
         self.J = J
@@ -59,18 +139,25 @@ class Bmodel():
         J, node_labels = topo2interaction(path=topo_file)
         return Bmodel(J=J, node_labels=node_labels, maxT=maxT)
 
-    def runs(self, n_runs=100):
+    def runs(self, n_runs=100, fast=False):
         """Find many steady states starting from random initial conditions."""
+        # set run function depending on fast option
+        run_function = run_jit
+        if fast:
+            run_function = run_fast_jit
         new_ss = []
         new_energies = []
         for _ in range(int(n_runs)):
-            convergence, s, H, UH, ic = self._run()
+            convergence, s, H, UH, ic = self._run(run_function=run_function)
             if convergence:
                 # these two are pd.Series so we better
                 # store them in a temporal list and
                 # append at the end
                 new_ss.append(s)
-                new_energies.append(H[-1])
+                if H is not None:
+                    new_energies.append(H[-1])
+                else:
+                    new_energies.append(None)
                 # these two are lists so it doesn't hurt to append now
                 self._energy_paths.append(H)
                 self._unique_energy_paths.append(UH)
@@ -133,31 +220,34 @@ class Bmodel():
         assert np.all((ic - np.sign(self.J_pseudo@ic)) == 0)
 
         # do the switch
-        i = np.argmax(self.node_labels == node_to_switch)
+        idx = np.argmax(self.node_labels == node_to_switch)
         if switch_to == "ON":
-            ic[i] = 1
+            ic[idx] = 1
         elif switch_to == "OFF":
-            ic[i] = -1
+            ic[idx] = -1
         else:
             raise RuntimeError("Value of 'switch_to' not recognized.")
 
         # find wich nodes can be updated
-        can_be_updated = [i for i, x in enumerate(self.node_labels)
-                          if x != node_to_switch]
+        can_be_updated = np.array([i for i, x in enumerate(self.node_labels)
+                                   if x != node_to_switch])
+        assert idx not in can_be_updated
+
         # lists to hold data
         initial_conditions = []
         steady_states = []
         metadata = []
         for _ in range(n_runs):
-            _, s, H, UH, _ = self._run(
+            _, s, _, _, _ = self._run(
                 initial_condition=ic,
-                can_be_updated=can_be_updated
+                can_be_updated=can_be_updated,
+                run_function=run_jit
             )
             # check that blocked node did not change
-            assert s[i] == ic[i]
+            assert s[idx] == ic[idx]
             # convergence does not take into account the blocked node
-            would_not_change = s == np.sign(self.J_pseudo@s)
-            convergence = np.all(would_not_change[can_be_updated])
+            s == np.sign(self.J_pseudo@s)
+            convergence = np.all(s[can_be_updated])
             if convergence:
                 initial_conditions.append(initial_condition)
                 steady_states.append(s)
@@ -187,7 +277,9 @@ class Bmodel():
 
     def _run(self,
              initial_condition=None,
-             can_be_updated=None):
+             can_be_updated=None,
+             run_function=run_jit
+             ):
         """
         Find one steady state.
 
@@ -201,37 +293,16 @@ class Bmodel():
         return convergence, s, H, UH
 
         """
-        if initial_condition is None:
-            initial_condition = np.random.choice([-1, 1], size=(self.N))
-        else:
-            assert len(initial_condition.shape) == 1
-            assert len(initial_condition) == self.N
         if can_be_updated is None:
-            can_be_updated = range(self.N)
-        s = initial_condition
-        ic = s.copy()
-        e = -s@(self.J@s)
-        H = [e]
-        UH = [e]
-        convergence = False
-
-        for _ in range(int(self.maxT)):
-            # update rule
-            k = np.random.choice(can_be_updated)
-
-            sk_new = np.sign((self.J_pseudo@s)[k])
-
-            if s[k] != sk_new:
-                s[k] = sk_new
-                e = -s@(self.J@s)
-                H.append(e)
-                UH.append(e)
-                # check convergence
-                if np.all(((s - np.sign(self.J_pseudo@s)) == 0)[can_be_updated]):
-                    convergence = True
-                    break
-            else:
-                e = -s@(self.J@s)
-                H.append(e)
-
+            cbu = np.arange(self.N)
+        else:
+            cbu = can_be_updated
+        convergence, s, H, UH, ic = run_function(
+            N=self.N,
+            J=self.J.astype(float),
+            J_pseudo=self.J_pseudo.astype(float),
+            maxT=self.maxT,
+            initial_condition=initial_condition,
+            can_be_updated=cbu
+        )
         return convergence, s, H, UH, ic

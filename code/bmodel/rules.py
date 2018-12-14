@@ -8,17 +8,20 @@ def majority(
     J: np.array,
     J_pseudo: np.array,
     maxT: int,
-    initial_condition=None,
-    can_be_updated=None,
+    initial_condition=np.empty(0, dtype=np.float64),
+    can_be_updated=np.empty(0, dtype=np.int64),
 ):
     """fast thanks tu numba"""
-    if initial_condition is None:
+    if len(can_be_updated) == 0:
+        can_be_updated = np.arange(N)
+    if len(initial_condition) == 0:
         initial_condition = np.random.choice(
             np.array([-1., 1.]),
             size=N)
     else:
         assert len(initial_condition.shape) == 1
         assert len(initial_condition) == N
+
     s = initial_condition.copy()
     ic = s.copy()
     e = -1*s@(J@s)
@@ -54,17 +57,20 @@ def majority_fast(
     J: np.array,
     J_pseudo: np.array,
     maxT: int,
-    initial_condition=None,
-    can_be_updated=None,
+    initial_condition=np.empty(0, dtype=np.float64),
+    can_be_updated=np.empty(0, dtype=np.int64),
 ):
     """even faster, because energies are not computed"""
-    if initial_condition is None:
+    if len(can_be_updated) == 0:
+        can_be_updated = np.arange(N)
+    if len(initial_condition) == 0:
         initial_condition = np.random.choice(
             np.array([-1., 1.]),
             size=N)
     else:
         assert len(initial_condition.shape) == 1
         assert len(initial_condition) == N
+
     s = initial_condition.copy()
     ic = s.copy()
     convergence = False

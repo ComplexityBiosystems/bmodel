@@ -201,9 +201,9 @@ class Bmodel():
             ignore_index=True)
 
     def _run(self,
-             initial_condition=None,
-             can_be_updated=None,
-             run_function=majority
+             run_function,
+             initial_condition=np.empty(0, dtype=np.float64),
+             can_be_updated=np.empty(0, dtype=np.int64),
              ):
         """
         Find one steady state.
@@ -218,16 +218,12 @@ class Bmodel():
         return convergence, s, H, UH
 
         """
-        if can_be_updated is None:
-            cbu = np.arange(self.N)
-        else:
-            cbu = can_be_updated
         convergence, s, H, UH, ic = run_function(
             N=self.N,
             J=self.J.astype(float),
             J_pseudo=self.J_pseudo.astype(float),
             maxT=self.maxT,
             initial_condition=initial_condition,
-            can_be_updated=cbu
+            can_be_updated=can_be_updated
         )
         return convergence, s, H, UH, ic

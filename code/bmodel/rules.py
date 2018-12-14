@@ -51,6 +51,7 @@ def majority(
 @jit(nopython=True)
 def majority_fast(
     N: int,
+    J: np.array,
     J_pseudo: np.array,
     maxT: int,
     initial_condition=None,

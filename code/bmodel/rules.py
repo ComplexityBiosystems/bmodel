@@ -23,7 +23,7 @@ def majority(
         assert len(initial_condition) == N
 
     s = initial_condition.copy()
-    ic = s.copy()
+    ic = initial_condition.copy()
     e = -1*s@(J@s)
     H = [e]
     UH = [e]

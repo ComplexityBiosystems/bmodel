@@ -9,88 +9,8 @@ import pandas as pd
 
 from .utils import check_interaction_matrix
 from .io import topo2interaction
-
-from numba import jit
-
-
-@jit(nopython=True)
-def run_jit(
-    N: int,
-    J: np.array,
-    J_pseudo: np.array,
-    maxT: int,
-    initial_condition=None,
-    can_be_updated=None,
-):
-    """fast thanks tu numba"""
-    if initial_condition is None:
-        initial_condition = np.random.choice(
-            np.array([-1., 1.]),
-            size=N)
-    else:
-        assert len(initial_condition.shape) == 1
-        assert len(initial_condition) == N
-    s = initial_condition.copy()
-    ic = s.copy()
-    e = -1*s@(J@s)
-    H = [e]
-    UH = [e]
-    convergence = False
-    for _ in range(int(maxT)):
-        # update rule
-        k = np.random.choice(can_be_updated)
-
-        sk_new = np.sign((J_pseudo@s)[k])
-
-        if s[k] != sk_new:
-            s[k] = sk_new
-            e = -1*s@(J@s)
-            H.append(e)
-            UH.append(e)
-            # check convergence
-            if np.all(((s - np.sign(J_pseudo@s)) == 0)[can_be_updated]):
-                convergence = True
-                return convergence, s, H, UH, ic
-
-        else:
-            e = -1*s@(J@s)
-            H.append(e)
-
-    return convergence, s, H, UH, ic
-
-
-@jit(nopython=True)
-def run_fast_jit(
-    N: int,
-    J: np.array,
-    J_pseudo: np.array,
-    maxT: int,
-    initial_condition=None,
-    can_be_updated=None,
-):
-    """even faster, because energies are not computed"""
-    if initial_condition is None:
-        initial_condition = np.random.choice(
-            np.array([-1., 1.]),
-            size=N)
-    else:
-        assert len(initial_condition.shape) == 1
-        assert len(initial_condition) == N
-    s = initial_condition.copy()
-    ic = s.copy()
-    convergence = False
-
-    for _ in range(maxT):
-        k = np.random.choice(can_be_updated)
-        sk_new = np.sign((J_pseudo@s)[k])
-
-        if s[k] != sk_new:
-            s[k] = sk_new
-            # check convergence
-            if np.all(((s - np.sign(J_pseudo@s)) == 0)[can_be_updated]):
-                convergence = True
-                return convergence, s, None, None, ic
-    return convergence, s, None, None, ic
+from .rules import majority
+from .rules import majority_fast
 
 
 class Bmodel():
@@ -144,9 +64,11 @@ class Bmodel():
     def runs(self, n_runs=100, fast=False):
         """Find many steady states starting from random initial conditions."""
         # set run function depending on fast option
-        run_function = run_jit
         if fast:
-            run_function = run_fast_jit
+            run_function = majority_fast
+        else:
+            run_function = majority
+
         new_ss = []
         new_energies = []
         for _ in range(int(n_runs)):
@@ -190,10 +112,12 @@ class Bmodel():
             Direciton to which it was switched.
 
         """
+        assert switch_to in ["ON", "OFF"]
+        anti_switch_to_int = {"ON": -1, "OFF": 1}[switch_to]
         idx = \
             (self._perturbations_meta.switched_node == switched_node) &\
-            (self._perturbations_meta.switched_to == "ON") &\
-            (self._perturbations_ic[switched_node] == -1)
+            (self._perturbations_meta.switched_to == switch_to) &\
+            (self._perturbations_ic[switched_node] == anti_switch_to_int)
         return self._perturbations_ss.loc[idx]
 
     def perturbe(
@@ -212,7 +136,7 @@ class Bmodel():
             Label of the node switched.
 
         """
-        ic = np.array(initial_condition).copy()
+        ic = np.array(initial_condition).astype(float).copy()
         # check dimensions
         assert len(ic.shape) == 1
         assert len(ic) == self.N
@@ -243,12 +167,11 @@ class Bmodel():
             _, s, _, _, _ = self._run(
                 initial_condition=ic,
                 can_be_updated=can_be_updated,
-                run_function=run_jit
+                run_function=majority_fast
             )
             # check that blocked node did not change
             assert s[idx] == ic[idx]
             # convergence does not take into account the blocked node
-            s == np.sign(self.J_pseudo@s)
             convergence = np.all(s[can_be_updated])
             if convergence:
                 initial_conditions.append(initial_condition)
@@ -280,7 +203,7 @@ class Bmodel():
     def _run(self,
              initial_condition=None,
              can_be_updated=None,
-             run_function=run_jit
+             run_function=majority
              ):
         """
         Find one steady state.

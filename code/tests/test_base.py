@@ -5,13 +5,11 @@ Francesc Font-Clos
 Nov 2018
 """
 
-from bmodel.base import Bmodel as Bmodel
-from bmodel.generate import random_interaction_matrix
+from bmodel.base import Bmodel
 
 import numpy as np
 import pandas as pd
 import pytest
-import time
 
 
 @pytest.fixture
@@ -21,14 +19,6 @@ def bmodel_neg_feedback():
     node_labels = ["node0", "node1"]
     bmodel = Bmodel(J=J, node_labels=node_labels, maxT=100)
     return bmodel
-
-# @pytest.fixture
-# def bmodel_neg_feedback():
-#     """Create simple network for testing."""
-#     J = random_interaction_matrix(N=10)
-#     node_labels = ["node%d" % i for i in range(10)]
-#     bmodel = Bmodel(J=J, node_labels=node_labels, maxT=100)
-#     return bmodel
 
 
 def test_base_bmodel_init():
@@ -49,14 +39,14 @@ def test_base_bmodel_runs(bmodel_neg_feedback):
     """Test that the model can run simulations."""
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
-    assert len(bmodel.steady_states) > 0
+    assert bmodel.steady_states
 
 
 def test_base_bmodel_runs_fast(bmodel_neg_feedback):
     """Test that the model can run simulations in fast mode."""
     bmodel = bmodel_neg_feedback
     bmodel.runs(20, fast=True)
-    assert len(bmodel.steady_states) > 0
+    assert bmodel.steady_states
 
 
 def test_base_bmodel_initial_conditions(bmodel_neg_feedback):

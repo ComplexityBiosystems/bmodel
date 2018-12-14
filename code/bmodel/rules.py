@@ -72,7 +72,7 @@ def majority_fast(
         assert len(initial_condition) == N
 
     s = initial_condition.copy()
-    ic = s.copy()
+    ic = initial_condition.copy()
     convergence = False
 
     for _ in range(maxT):

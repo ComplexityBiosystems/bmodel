@@ -39,14 +39,14 @@ def test_base_bmodel_runs(bmodel_neg_feedback):
     """Test that the model can run simulations."""
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
-    assert bmodel.steady_states
+    assert len(bmodel.steady_states) > 0
 
 
 def test_base_bmodel_runs_fast(bmodel_neg_feedback):
     """Test that the model can run simulations in fast mode."""
     bmodel = bmodel_neg_feedback
     bmodel.runs(20, fast=True)
-    assert bmodel.steady_states
+    assert len(bmodel.steady_states) > 0
 
 
 def test_base_bmodel_initial_conditions(bmodel_neg_feedback):

@@ -9,6 +9,8 @@ import pandas as pd
 
 from .utils import check_interaction_matrix
 from .io import topo2interaction
+from .rules import majority
+from .rules import majority_fast
 
 
 class Bmodel():
@@ -36,7 +38,7 @@ class Bmodel():
         # deal with named nodes
         if node_labels is None:
             node_labels = range(num_nodes)
-        self.node_labels = node_labels
+        self.node_labels = np.array(node_labels)
 
         # store stuff
         self.J = J
@@ -59,18 +61,27 @@ class Bmodel():
         J, node_labels = topo2interaction(path=topo_file)
         return Bmodel(J=J, node_labels=node_labels, maxT=maxT)
 
-    def runs(self, n_runs=100):
+    def runs(self, n_runs=100, fast=False):
         """Find many steady states starting from random initial conditions."""
+        # set run function depending on fast option
+        if fast:
+            run_function = majority_fast
+        else:
+            run_function = majority
+
         new_ss = []
         new_energies = []
         for _ in range(int(n_runs)):
-            convergence, s, H, UH, ic = self._run()
+            convergence, s, H, UH, ic = self._run(run_function=run_function)
             if convergence:
                 # these two are pd.Series so we better
                 # store them in a temporal list and
                 # append at the end
                 new_ss.append(s)
-                new_energies.append(H[-1])
+                if H is not None:
+                    new_energies.append(H[-1])
+                else:
+                    new_energies.append(None)
                 # these two are lists so it doesn't hurt to append now
                 self._energy_paths.append(H)
                 self._unique_energy_paths.append(UH)
@@ -101,10 +112,12 @@ class Bmodel():
             Direciton to which it was switched.
 
         """
+        assert switch_to in ["ON", "OFF"]
+        anti_switch_to_int = {"ON": -1, "OFF": 1}[switch_to]
         idx = \
             (self._perturbations_meta.switched_node == switched_node) &\
-            (self._perturbations_meta.switched_to == "ON") &\
-            (self._perturbations_ic[switched_node] == -1)
+            (self._perturbations_meta.switched_to == switch_to) &\
+            (self._perturbations_ic[switched_node] == anti_switch_to_int)
         return self._perturbations_ss.loc[idx]
 
     def perturbe(
@@ -123,7 +136,7 @@ class Bmodel():
             Label of the node switched.
 
         """
-        ic = np.array(initial_condition).copy()
+        ic = np.array(initial_condition).astype(float).copy()
         # check dimensions
         assert len(ic.shape) == 1
         assert len(ic) == self.N
@@ -133,31 +146,33 @@ class Bmodel():
         assert np.all((ic - np.sign(self.J_pseudo@ic)) == 0)
 
         # do the switch
-        i = np.argmax(self.node_labels == node_to_switch)
+        idx = np.argmax(self.node_labels == node_to_switch)
         if switch_to == "ON":
-            ic[i] = 1
+            ic[idx] = 1
         elif switch_to == "OFF":
-            ic[i] = -1
+            ic[idx] = -1
         else:
             raise RuntimeError("Value of 'switch_to' not recognized.")
 
         # find wich nodes can be updated
-        can_be_updated = [i for i, x in enumerate(self.node_labels)
-                          if x != node_to_switch]
+        can_be_updated = np.array([i for i, x in enumerate(self.node_labels)
+                                   if x != node_to_switch])
+        assert idx not in can_be_updated
+
         # lists to hold data
         initial_conditions = []
         steady_states = []
         metadata = []
         for _ in range(n_runs):
-            _, s, H, UH, _ = self._run(
+            _, s, _, _, _ = self._run(
                 initial_condition=ic,
-                can_be_updated=can_be_updated
+                can_be_updated=can_be_updated,
+                run_function=majority_fast
             )
             # check that blocked node did not change
-            assert s[i] == ic[i]
+            assert s[idx] == ic[idx]
             # convergence does not take into account the blocked node
-            would_not_change = s == np.sign(self.J_pseudo@s)
-            convergence = np.all(would_not_change[can_be_updated])
+            convergence = np.all(s[can_be_updated])
             if convergence:
                 initial_conditions.append(initial_condition)
                 steady_states.append(s)
@@ -186,8 +201,10 @@ class Bmodel():
             ignore_index=True)
 
     def _run(self,
-             initial_condition=None,
-             can_be_updated=None):
+             run_function,
+             initial_condition=np.empty(0, dtype=np.float64),
+             can_be_updated=np.empty(0, dtype=np.int64),
+             ):
         """
         Find one steady state.
 
@@ -201,37 +218,12 @@ class Bmodel():
         return convergence, s, H, UH
 
         """
-        if initial_condition is None:
-            initial_condition = np.random.choice([-1, 1], size=(self.N))
-        else:
-            assert len(initial_condition.shape) == 1
-            assert len(initial_condition) == self.N
-        if can_be_updated is None:
-            can_be_updated = range(self.N)
-        s = initial_condition
-        ic = s.copy()
-        e = -s@(self.J@s)
-        H = [e]
-        UH = [e]
-        convergence = False
-
-        for _ in range(int(self.maxT)):
-            # update rule
-            k = np.random.choice(can_be_updated)
-
-            sk_new = np.sign((self.J_pseudo@s)[k])
-
-            if s[k] != sk_new:
-                s[k] = sk_new
-                e = -s@(self.J@s)
-                H.append(e)
-                UH.append(e)
-                # check convergence
-                if np.all(((s - np.sign(self.J_pseudo@s)) == 0)[can_be_updated]):
-                    convergence = True
-                    break
-            else:
-                e = -s@(self.J@s)
-                H.append(e)
-
+        convergence, s, H, UH, ic = run_function(
+            N=self.N,
+            J=self.J.astype(float),
+            J_pseudo=self.J_pseudo.astype(float),
+            maxT=self.maxT,
+            initial_condition=initial_condition,
+            can_be_updated=can_be_updated
+        )
         return convergence, s, H, UH, ic

@@ -4,10 +4,12 @@ Tests for the base class.
 Francesc Font-Clos
 Nov 2018
 """
-import pytest
+
 from bmodel.base import Bmodel
+
 import numpy as np
 import pandas as pd
+import pytest
 
 
 @pytest.fixture
@@ -37,6 +39,13 @@ def test_base_bmodel_runs(bmodel_neg_feedback):
     """Test that the model can run simulations."""
     bmodel = bmodel_neg_feedback
     bmodel.runs(20)
+    assert len(bmodel.steady_states) > 0
+
+
+def test_base_bmodel_runs_fast(bmodel_neg_feedback):
+    """Test that the model can run simulations in fast mode."""
+    bmodel = bmodel_neg_feedback
+    bmodel.runs(20, fast=True)
     assert len(bmodel.steady_states) > 0
 
 

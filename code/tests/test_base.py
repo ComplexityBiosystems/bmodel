@@ -7,6 +7,7 @@ Nov 2018
 
 from bmodel.base import Bmodel
 from bmodel.generate import random_interaction_matrix
+from bmodel.exceptions import IndicatorError
 
 import numpy as np
 import pandas as pd
@@ -210,3 +211,56 @@ def test_base_bmodel_no_hold():
     checks = list(np.concatenate(checks))
     checks = sorted(list(set(checks)))
     assert checks == [False, True]
+
+
+def test_base_bmodel_indicator_is_set():
+    n_nodes = 16
+    J = random_interaction_matrix(N=n_nodes)
+    node_labels = [
+        "node_%d" % i
+        for i in range(n_nodes)
+    ]
+    indicator_nodes = np.random.choice(
+        node_labels,
+        size=3,
+        replace=False
+    )
+    bmodel = Bmodel(
+        J=J,
+        node_labels=node_labels,
+        indicator_nodes=indicator_nodes
+    )
+    assert bmodel.indicator_nodes == list(indicator_nodes)
+
+
+def test_base_bmodel_indicator_can_fail():
+    n_nodes = 16
+    J = random_interaction_matrix(N=n_nodes)
+    node_labels = [
+        "node_%d" % i
+        for i in range(n_nodes)
+    ]
+    indicator_nodes = ["node_a", "node_b"]
+    with pytest.raises(IndicatorError):
+        _ = Bmodel(
+            J=J,
+            node_labels=node_labels,
+            indicator_nodes=indicator_nodes
+        )
+
+
+def test_base_bmodel_indicator_unique():
+    """Test that we cannot pass non-unique indicators"""
+    n_nodes = 16
+    J = random_interaction_matrix(N=n_nodes)
+    node_labels = [
+        "node_%d" % i
+        for i in range(n_nodes)
+    ]
+    indicator_nodes = ["node_0", "node_1", "node_0"]
+    with pytest.raises(IndicatorError):
+        _ = Bmodel(
+            J=J,
+            node_labels=node_labels,
+            indicator_nodes=indicator_nodes
+        )

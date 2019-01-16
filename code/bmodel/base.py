@@ -6,25 +6,59 @@ Oct 2018
 """
 import numpy as np
 import pandas as pd
+from typing import Sequence
 
 from .utils import check_interaction_matrix
 from .io import topo2interaction
 from .rules import majority
 from .rules import majority_fast
+from .exceptions import IndicatorError
+
+"""
+    Create a boolean model instance.
+
+
+    """
 
 
 class Bmodel():
     """Main class holding a Boolean Model."""
 
-    def __init__(self, maxT=1000, J=None, node_labels=None):
-        """
-        Create a boolean model instance.
+    def __init__(
+        self,
+        J: np.ndarray = None,
+        node_labels: Sequence[str] = None,
+        indicator_nodes: Sequence[str] = [],
+        maxT=1000,
+    ):
+        r"""Boolean model with majority rule dynamics.
+
+        Parameters
+        ----------
+        J : np.ndarray, optional
+            Interaction matrix (the default is None, which [default_description])
+        node_labels : Sequence, optional
+            Labels given to the nodes. If not passed, integer labels are used.
+        indicator_nodes : Sequence, optional
+            Nodes that indicate a phenotypic state but don't represent a real
+            entity in the model. E.g. "Apoptosis"
+        maxT : int, optional
+            Maximum number of time-steps to find steady states. Defaults to 1000.
 
         Notes
         -----
-        I define the pseudo-interaction_matrix
-        The matrix J_pseudo is such that sign(J_pseudo.dot(s)) is like
-        sign(J.dot(s))+taking_ties_into_account
+        The pseudo-interaction matrix J_pseudo is such that
+
+        `sign(J_pseudo.dot(s))`
+
+        is equivalent to
+
+        `sign(J.dot(s)) + taking_ties_into_account`
+
+        What should indicator nodes behave like?
+        1. Cannot be input of other nodes
+        2. Cannot be blocked
+        3. Should be neutral (0) in initial conditions
 
         """
         # check input
@@ -39,6 +73,9 @@ class Bmodel():
         if node_labels is None:
             node_labels = range(num_nodes)
         self.node_labels = np.array(node_labels)
+
+        # set indicator nodes
+        self._set_indicator_nodes(indicator_nodes)
 
         # store stuff
         self.J = J
@@ -220,6 +257,22 @@ class Bmodel():
         self._perturbations_meta = self._perturbations_meta.append(
             new_perturbations_meta,
             ignore_index=True)
+
+    # ----------------
+    # PRIVATE METHODS
+    # ----------------
+
+    def _set_indicator_nodes(self, indicator_nodes: Sequence) -> None:
+        # check that we have unique elements
+        if not sorted(set(list(indicator_nodes))) == sorted(list(indicator_nodes)):
+            raise IndicatorError
+
+        # check indicator nodes exist
+        for node in indicator_nodes:
+            if node not in self.node_labels:
+                raise IndicatorError(
+                    f"Label {node} not found in node_labels, so it cannot be set as indicator node")
+        self.indicator_nodes = list(indicator_nodes)
 
     def _run(self,
              run_function,

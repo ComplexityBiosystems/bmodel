@@ -215,16 +215,20 @@ def test_base_bmodel_no_hold():
 
 def test_base_bmodel_indicator_is_set():
     n_nodes = 16
-    J = random_interaction_matrix(N=n_nodes)
     node_labels = [
         "node_%d" % i
         for i in range(n_nodes)
     ]
-    indicator_nodes = np.random.choice(
-        node_labels,
-        size=3,
-        replace=False
-    )
+    # let us get at least two indicator nodes
+    num_indicators = 0
+    while num_indicators <= 1:
+        J = random_interaction_matrix(N=n_nodes)
+        indicator_nodes = [
+            node
+            for i, node in enumerate(node_labels)
+            if np.all(J[:, i] == 0)
+        ]
+        num_indicators = len(indicator_nodes)
     bmodel = Bmodel(
         J=J,
         node_labels=node_labels,
@@ -264,3 +268,85 @@ def test_base_bmodel_indicator_unique():
             node_labels=node_labels,
             indicator_nodes=indicator_nodes
         )
+
+
+def test_base_bmodel_indicator_idx():
+    """Test that we correctly save the positions of indicator nodes"""
+    n_nodes = 4
+    J = np.array([
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 0],
+        [0, 1, 0, 0],
+    ])
+    node_labels = [
+        "node_%d" % i
+        for i in range(n_nodes)
+    ]
+    indicator_nodes = [
+        "node_0",
+        "node_3"
+    ]
+    bmodel = Bmodel(
+        J=J,
+        node_labels=node_labels,
+        indicator_nodes=indicator_nodes
+    )
+    assert bmodel._indicator_idx == [0, 3]
+
+
+def test_base_bmodel_indicator_not_inputs():
+    """Test that we cannot pass as indicator nodes that are input of other nodes"""
+    J = np.array([
+        [0, 1, 0],
+        [0, 0, 1],
+        [0, 0, 0]
+    ])
+    # node 1 cannot be indicator
+    with pytest.raises(IndicatorError):
+        _ = Bmodel(
+            J=J,
+            indicator_nodes=[1]
+        )
+    # node 2 cannot be indicator
+    with pytest.raises(IndicatorError):
+        _ = Bmodel(
+            J=J,
+            indicator_nodes=[2]
+        )
+    # instead node 0 can
+    _ = Bmodel(
+        J=J,
+        indicator_nodes=[0]
+    )
+    assert True
+
+
+def test_base_bmodel_indicator_not_inputs_using_labels():
+    """Test that we cannot pass as indicator nodes that are input of other nodes, using string labels"""
+    J = np.array([
+        [0, 1, 0],
+        [0, 0, 1],
+        [0, 0, 0]
+    ])
+    # node 1 cannot be indicator
+    with pytest.raises(IndicatorError):
+        _ = Bmodel(
+            J=J,
+            node_labels=["a", "b", "c"],
+            indicator_nodes=["b"]
+        )
+    # node 2 cannot be indicator
+    with pytest.raises(IndicatorError):
+        _ = Bmodel(
+            J=J,
+            node_labels=["a", "b", "c"],
+            indicator_nodes=["c"]
+        )
+    # instead node 0 can
+    _ = Bmodel(
+        J=J,
+        node_labels=["a", "b", "c"],
+        indicator_nodes=["a"]
+    )
+    assert True

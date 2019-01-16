@@ -74,11 +74,10 @@ class Bmodel():
             node_labels = range(num_nodes)
         self.node_labels = np.array(node_labels)
 
-        # set indicator nodes
-        self._set_indicator_nodes(indicator_nodes)
-
         # store stuff
         self.J = J
+        # set indicator nodes
+        self._set_indicator_nodes(indicator_nodes)
         self.J_pseudo = J_pseudo
         self.N = num_nodes
         self.maxT = maxT
@@ -109,7 +108,18 @@ class Bmodel():
         new_ss = []
         new_energies = []
         for _ in range(int(n_runs)):
-            convergence, s, H, UH, ic = self._run(run_function=run_function)
+            initial_condition = np.empty(0, dtype=np.float64)
+            # set neutral value 0 to indicator nodes
+            if self._indicator_idx:
+                initial_condition = np.random.choice(
+                    np.array([-1., 1.]),
+                    size=self.N
+                )
+                initial_condition[self._indicator_idx] = 0
+            convergence, s, H, UH, ic = self._run(
+                initial_condition=initial_condition,
+                run_function=run_function
+            )
             if convergence:
                 # these two are pd.Series so we better
                 # store them in a temporal list and
@@ -273,6 +283,16 @@ class Bmodel():
                 raise IndicatorError(
                     f"Label {node} not found in node_labels, so it cannot be set as indicator node")
         self.indicator_nodes = list(indicator_nodes)
+        self._indicator_idx = [
+            i
+            for i, x in enumerate(self.node_labels)
+            if x in self.indicator_nodes
+        ]
+        # check that indicator nodes are not input of other nodes
+        for i in self._indicator_idx:
+            if np.any(self.J[:, i] != 0):
+                raise IndicatorError(
+                    f"Node {self.node_labels[i]} cannot be an indicator because it is input of other nodes")
 
     def _run(self,
              run_function,

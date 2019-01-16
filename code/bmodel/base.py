@@ -183,7 +183,8 @@ class Bmodel():
         initial_condition=None,
         node_to_switch=None,
         switch_to=None,
-        hold=True,
+        hold=None,
+        allow_non_steady_state=False,
         n_runs=100
     ):
         """
@@ -195,14 +196,18 @@ class Bmodel():
             Label of the node switched.
 
         """
-        ic = np.array(initial_condition).astype(float).copy()
-        # check dimensions
-        assert len(ic.shape) == 1
-        assert len(ic) == self.N
+        assert initial_condition is not None
+        assert node_to_switch is not None
+        assert node_to_switch not in self.indicator_nodes
+        assert switch_to is not None
+        assert hold in [False, True]
+
+        ic = self._parse_initial_condition(initial_condition)
         # check that we are switching to ON or OFF
         assert switch_to in ["ON", "OFF"]
         # check that the state is steady
-        assert np.all((ic - np.sign(self.J_pseudo@ic)) == 0)
+        if not allow_non_steady_state:
+            assert np.all((ic - np.sign(self.J_pseudo@ic)) == 0)
 
         # do the switch
         idx = np.argmax(self.node_labels == node_to_switch)
@@ -321,3 +326,53 @@ class Bmodel():
             can_be_updated=can_be_updated
         )
         return convergence, s, H, UH, ic
+
+    def _parse_initial_condition(self, initial_condition):
+        assert isinstance(initial_condition,
+                          (tuple, list, np.ndarray, dict, pd.Series))
+
+        # if type is list or array, length must be correct
+        if isinstance(initial_condition, (tuple, list, np.ndarray)):
+            assert len(initial_condition) == self.N
+            ic = np.array(initial_condition).astype(float)
+            # make sure indicator nodes are all 0
+            if not np.all(ic[self._indicator_idx] == 0):
+                raise IndicatorError(
+                    "The initial condition contains non-zero elements at positions that correspond to indicator nodes.")
+
+        # in the other cases, we have named entries
+        # either we get all the nodes, or we miss all indicator nodes
+        elif isinstance(initial_condition, dict):
+            ic = []
+            for node in self.node_labels:
+                if node not in initial_condition.keys():
+                    # if we are missing a node we check if
+                    # its an indicator node because that's ok
+                    if node in self.indicator_nodes:
+                        ic.append(0)
+                        # but then we check that none other indicator nodes
+                        # have been passsed as neither
+                        for _node in self.indicator_nodes:
+                            if _node != node:
+                                if _node in initial_condition.keys():
+                                    raise IndicatorError(
+                                        f"Indicator node {node} missing but {_node} present")
+                    else:
+                        raise RuntimeError(f"Node {node} not in keys")
+                else:
+                    value = initial_condition[node]
+                    ic.append(value)
+        # if its a Series revert to dict
+        elif isinstance(initial_condition, pd.Series):
+            return self._parse_initial_condition(dict(initial_condition))
+
+        # finally, check that we got the right values
+        for idx, val in enumerate(ic):
+            if idx in self._indicator_idx:
+                assert val == 0
+            else:
+                if val not in [-1, 1]:
+                    raise RuntimeError(
+                        f"All values must be in [-1, 1] (for node {self.node_labels[idx]} you passed {val})")
+
+        return np.array(ic).astype(float)

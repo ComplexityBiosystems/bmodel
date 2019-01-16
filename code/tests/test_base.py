@@ -91,7 +91,8 @@ def test_base_bmodel_perturbe_ic(bmodel_neg_feedback: Bmodel):
                     initial_condition=config,
                     node_to_switch=node_to_switch,
                     switch_to=switch_to,
-                    n_runs=n_runs
+                    n_runs=n_runs,
+                    hold=hold
                 )
     assert bmodel._perturbations_ic.shape == (n_runs * bmodel.N * 4, bmodel.N)
 

@@ -54,7 +54,7 @@ class Bmodel():
         self._perturbations_ic = pd.DataFrame(columns=node_labels, dtype=int)
         self._perturbations_ss = pd.DataFrame(columns=node_labels, dtype=int)
         self._perturbations_meta = pd.DataFrame(
-            columns=["switched_node", "switched_to"])
+            columns=["switched_node", "switched_to", "hold"])
 
     @staticmethod
     def from_topo(topo_file, maxT=1000):
@@ -97,7 +97,7 @@ class Bmodel():
         # to keep track of convergence probability
         self.total_runs += n_runs
 
-    def get_perturbations(self, switched_node=None, switch_to=None):
+    def get_perturbations(self, switched_node=None, switch_to=None, hold=None, return_ic=False):
         """
         Retrieve perturbations already simulated.
 
@@ -108,23 +108,35 @@ class Bmodel():
         ----------
         switched_node: str
             Label of node that was switched.
-        switch_to: "OFF" or "ON"
+        switch_to: str, "OFF" or "ON"
             Direciton to which it was switched.
+        hold: bool
+            Was the node holded or not during relaxation.
+        return_ic: bool
+            If True, return also the initial conditions.
+            Defaults to False
 
         """
         assert switch_to in ["ON", "OFF"]
+        assert hold in [True, False]
         anti_switch_to_int = {"ON": -1, "OFF": 1}[switch_to]
         idx = \
             (self._perturbations_meta.switched_node == switched_node) &\
             (self._perturbations_meta.switched_to == switch_to) &\
-            (self._perturbations_ic[switched_node] == anti_switch_to_int)
-        return self._perturbations_ss.loc[idx]
+            (self._perturbations_ic[switched_node] == anti_switch_to_int) &\
+            (self._perturbations_meta.hold == hold)
+        if not return_ic:
+            return self._perturbations_ss.loc[idx]
+        else:
+            return (self._perturbations_ss.loc[idx],
+                    self._perturbations_ic.loc[idx])
 
     def perturbe(
         self,
         initial_condition=None,
         node_to_switch=None,
         switch_to=None,
+        hold=True,
         n_runs=100
     ):
         """
@@ -155,10 +167,18 @@ class Bmodel():
             raise RuntimeError("Value of 'switch_to' not recognized.")
 
         # find wich nodes can be updated
-        can_be_updated = np.array([i for i, x in enumerate(self.node_labels)
-                                   if x != node_to_switch])
-        assert idx not in can_be_updated
-
+        if hold:
+            can_be_updated = np.array([
+                i
+                for i, x in enumerate(self.node_labels)
+                if x != node_to_switch
+            ])
+            assert idx not in can_be_updated
+        else:
+            can_be_updated = np.array([
+                i
+                for i, x in enumerate(self.node_labels)
+            ])
         # lists to hold data
         initial_conditions = []
         steady_states = []
@@ -170,13 +190,14 @@ class Bmodel():
                 run_function=majority_fast
             )
             # check that blocked node did not change
-            assert s[idx] == ic[idx]
+            if hold:
+                assert s[idx] == ic[idx]
             # convergence does not take into account the blocked node
             convergence = np.all(s[can_be_updated])
             if convergence:
                 initial_conditions.append(initial_condition)
                 steady_states.append(s)
-                metadata.append([node_to_switch, switch_to])
+                metadata.append([node_to_switch, switch_to, hold])
 
         # add new gathered perturbation data to bmodel class
         new_perturbations_ic = pd.DataFrame(
@@ -189,7 +210,7 @@ class Bmodel():
             dtype=int)
         new_perturbations_meta = pd.DataFrame(
             metadata,
-            columns=["switched_node", "switched_to"])
+            columns=["switched_node", "switched_to", "hold"])
         self._perturbations_ic = self._perturbations_ic.append(
             new_perturbations_ic,
             ignore_index=True)

@@ -68,15 +68,17 @@ def test_base_bmodel_perturbe_ss(bmodel_neg_feedback: Bmodel):
     bmodel.runs(20)
     n_runs = 3
     config = bmodel.steady_states.values[0]
-    for node_to_switch in bmodel.node_labels:
-        for switch_to in ["ON", "OFF"]:
-            bmodel.perturbe(
-                initial_condition=config,
-                node_to_switch=node_to_switch,
-                switch_to=switch_to,
-                n_runs=n_runs
-            )
-    assert bmodel._perturbations_ss.shape == (n_runs * bmodel.N * 2, bmodel.N)
+    for hold in [False, True]:
+        for node_to_switch in bmodel.node_labels:
+            for switch_to in ["ON", "OFF"]:
+                bmodel.perturbe(
+                    initial_condition=config,
+                    node_to_switch=node_to_switch,
+                    switch_to=switch_to,
+                    n_runs=n_runs,
+                    hold=hold
+                )
+    assert bmodel._perturbations_ss.shape == (n_runs * bmodel.N * 4, bmodel.N)
 
 
 def test_base_bmodel_perturbe_ic(bmodel_neg_feedback: Bmodel):
@@ -121,8 +123,9 @@ def test_base_bmodel_get_perturbations():
     """Test that we retrieve the right number of perturbations"""
     n_nodes = 16
     n_runs_pert = 5
-    bmodel = Bmodel(J=random_interaction_matrix(N=n_nodes))
+    bmodel = Bmodel(J=random_interaction_matrix(N=n_nodes), maxT=4)
     bmodel.runs(20)
+    # do the perturbations
     for config in bmodel.steady_states.values:
         for hold in [True, False]:
             for node_to_switch in bmodel.node_labels:
@@ -134,7 +137,7 @@ def test_base_bmodel_get_perturbations():
                         n_runs=n_runs_pert,
                         hold=hold
                     )
-
+    # count the perturbations
     for hold in [True, False]:
         for switched_node in bmodel.node_labels:
             for switch_to in ["ON", "OFF"]:

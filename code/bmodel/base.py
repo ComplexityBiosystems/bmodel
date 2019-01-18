@@ -6,7 +6,7 @@ Oct 2018
 """
 import numpy as np
 import pandas as pd
-from typing import Sequence
+from typing import Sequence, List
 
 from .utils import check_interaction_matrix
 from .io import topo2interaction
@@ -71,7 +71,7 @@ class Bmodel():
 
         # deal with named nodes
         if node_labels is None:
-            node_labels = range(num_nodes)
+            node_labels = ["node_" + str(x) for x in range(num_nodes)]
         self.node_labels = np.array(node_labels)
 
         # store stuff
@@ -84,13 +84,13 @@ class Bmodel():
         self.total_runs = 0
         self.steady_states = pd.DataFrame(columns=node_labels, dtype=int)
         self.energies = pd.Series(dtype=int)
-        self._energy_paths = []
-        self._unique_energy_paths = []
-        self._initial_conditions = []
+        self._energy_paths: List = []
+        self._unique_energy_paths: List = []
+        self._initial_conditions: List = []
         self._perturbations_ic = pd.DataFrame(columns=node_labels, dtype=int)
         self._perturbations_ss = pd.DataFrame(columns=node_labels, dtype=int)
         self._perturbations_meta = pd.DataFrame(
-            columns=["switched_node", "switched_to", "hold"])
+            columns=["switched_node", "switched_to", "hold", "label"])
 
     @staticmethod
     def from_topo(topo_file, maxT=1000):
@@ -181,6 +181,7 @@ class Bmodel():
     def perturbe(
         self,
         initial_condition=None,
+        label="",
         node_to_switch=None,
         switch_to=None,
         hold=None,
@@ -194,7 +195,8 @@ class Bmodel():
         ----------
         node_to_switch: str
             Label of the node switched.
-
+        label: str
+            Label with soem information about the initial condition
         """
         assert initial_condition is not None
         assert node_to_switch is not None
@@ -249,7 +251,7 @@ class Bmodel():
             if convergence:
                 initial_conditions.append(initial_condition)
                 steady_states.append(s)
-                metadata.append([node_to_switch, switch_to, hold])
+                metadata.append([node_to_switch, switch_to, hold, label])
 
         # add new gathered perturbation data to bmodel class
         new_perturbations_ic = pd.DataFrame(
@@ -262,7 +264,7 @@ class Bmodel():
             dtype=int)
         new_perturbations_meta = pd.DataFrame(
             metadata,
-            columns=["switched_node", "switched_to", "hold"])
+            columns=["switched_node", "switched_to", "hold", "label"])
         self._perturbations_ic = self._perturbations_ic.append(
             new_perturbations_ic,
             ignore_index=True)

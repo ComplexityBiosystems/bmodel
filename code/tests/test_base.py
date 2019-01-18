@@ -23,6 +23,21 @@ def bmodel_neg_feedback():
     return bmodel
 
 
+@pytest.fixture
+def bmodel_abc_chain():
+    J = np.array([
+        [0, 1, 0],
+        [0, 0, 1],
+        [0, 0, 0]
+    ])
+    bmodel = Bmodel(
+        J=J,
+        node_labels=["a", "b", "c"],
+        indicator_nodes=["a"]
+    )
+    return bmodel
+
+
 def test_base_bmodel_init():
     """Test that bmodel objects can be instantiated."""
     J = np.array([[0, -1], [-1, 0]])
@@ -116,7 +131,7 @@ def test_base_bmodel_perturbe_meta(bmodel_neg_feedback: Bmodel):
                     n_runs=n_runs,
                     hold=hold
                 )
-    assert bmodel._perturbations_meta.shape == (n_runs * bmodel.N * 4, 3)
+    assert bmodel._perturbations_meta.shape == (n_runs * bmodel.N * 4, 4)
 
 
 def test_base_bmodel_get_perturbations():
@@ -309,18 +324,18 @@ def test_base_bmodel_indicator_not_inputs():
     with pytest.raises(IndicatorError):
         _ = Bmodel(
             J=J,
-            indicator_nodes=[1]
+            indicator_nodes=["node_1"]
         )
     # node 2 cannot be indicator
     with pytest.raises(IndicatorError):
         _ = Bmodel(
             J=J,
-            indicator_nodes=[2]
+            indicator_nodes=["node_2"]
         )
     # instead node 0 can
     _ = Bmodel(
         J=J,
-        indicator_nodes=[0]
+        indicator_nodes=["node_0"]
     )
     assert True
 
@@ -353,3 +368,72 @@ def test_base_bmodel_indicator_not_inputs_using_labels():
         indicator_nodes=["a"]
     )
     assert True
+
+
+def test_base_bmodel__parse_initial_condition_listlike(bmodel_neg_feedback):
+    """Test that we correctly parse initial conditions for perturbations
+    when we pass a list-like object
+    """
+    bmodel = bmodel_neg_feedback
+
+    # check that we cast to array
+    for initial_condition in [
+        [-1, 1],
+        np.array([-1, 1]),
+    ]:
+        ic = bmodel._parse_initial_condition(
+            initial_condition=initial_condition
+        )
+        assert np.all(ic == np.array([-1., 1.]))
+
+    # check that we fail for shape mismatch
+    for initial_condition in [
+        [-1],
+        np.array([-1]),
+    ]:
+        with pytest.raises(AssertionError):
+            _ = bmodel._parse_initial_condition(
+                initial_condition=initial_condition
+            )
+
+    # check that we fail for wrong input
+    for initial_condition in [
+        [-1, 2],
+        np.array([-1, 2]),
+    ]:
+        with pytest.raises(RuntimeError):
+            _ = bmodel._parse_initial_condition(
+                initial_condition=initial_condition
+            )
+
+
+def test_base_bmodel__parse_initial_condition_listlike_indicators(bmodel_abc_chain):
+    """Test that we can/not pass non-zero values to indicator nodes"""
+    bmodel = bmodel_abc_chain
+    # first node is indicator
+    # we can pass 0 to it
+    initial_condition = [0, 1, 1]
+    ic_exp = np.array(initial_condition)
+    assert np.all(
+        ic_exp == bmodel._parse_initial_condition(initial_condition)
+    )
+    # but we can't pass zero to a non-indicator node
+    initial_condition = [1, 1, 0]
+    ic_exp = np.array(initial_condition)
+    with pytest.raises(RuntimeError):
+        _ = bmodel._parse_initial_condition(initial_condition)
+
+# MISSING TESTS FOR PARSE INITIAL CONDITION WITH SERIES-LIKE OBJECTS
+
+
+def test_base_bmodel_perturbations_labels(bmodel_neg_feedback: Bmodel):
+    """Test that we can pass and retrieve labels to perturbations"""
+    bmodel = bmodel_neg_feedback
+    bmodel.runs(10)
+    ic = bmodel.steady_states.values[0]
+    bmodel.perturbe(initial_condition=ic, node_to_switch="node_0",
+                    switch_to="ON", label="mylabel", n_runs=10, hold=False)
+
+    labels = bmodel._perturbations_meta["label"].unique()
+    assert len(labels) == 1
+    assert labels[0] == "mylabel"

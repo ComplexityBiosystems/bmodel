@@ -208,6 +208,7 @@ class Bmodel():
         ic = self._parse_initial_condition(initial_condition)
         # fill in the indicator nodes
         ic = self._fill_in_indicator_nodes(ic)
+        ic_noswitch = ic.copy()
 
         # check that we are switching to ON or OFF
         assert switch_to in ["ON", "OFF"]
@@ -253,7 +254,7 @@ class Bmodel():
             # convergence does not take into account the blocked node
             convergence = np.all(s[can_be_updated])
             if convergence:
-                initial_conditions.append(initial_condition)
+                initial_conditions.append(ic_noswitch)
                 steady_states.append(s)
                 metadata.append([node_to_switch, switch_to, hold, label])
 

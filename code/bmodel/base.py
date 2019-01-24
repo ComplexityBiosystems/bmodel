@@ -301,11 +301,12 @@ class Bmodel():
                 raise IndicatorError(
                     f"Node {self.node_labels[i]} cannot be an indicator because it is input of other nodes")
 
-    def _run(self,
-             run_function,
-             initial_condition=np.empty(0, dtype=np.float64),
-             can_be_updated=np.empty(0, dtype=np.int64),
-             ):
+    def _run(
+        self,
+        run_function,
+        initial_condition=np.empty(0, dtype=np.float64),
+        can_be_updated=np.empty(0, dtype=np.int64),
+    ):
         """
         Find one steady state.
 
@@ -328,6 +329,25 @@ class Bmodel():
             can_be_updated=can_be_updated
         )
         return convergence, s, H, UH, ic
+
+    def _fill_in_indicator_nodes(
+        self,
+        initial_condition=np.empty(0, dtype=np.float64),
+        can_be_updated=np.empty(0, dtype=np.int64),
+    ):
+        s = initial_condition
+        # for each indicator node, update only him
+        for i in self._indicator_idx:
+            can_be_updated = np.array([i])
+            _, s, _, _, _ = majority_fast(
+                N=self.N,
+                J=self.J.astype(float),
+                J_pseudo=self.J_pseudo.astype(float),
+                maxT=1,
+                initial_condition=s,
+                can_be_updated=can_be_updated
+            )
+        return s
 
     def _parse_initial_condition(self, initial_condition):
         assert isinstance(initial_condition,

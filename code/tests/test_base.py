@@ -437,3 +437,33 @@ def test_base_bmodel_perturbations_labels(bmodel_neg_feedback: Bmodel):
     labels = bmodel._perturbations_meta["label"].unique()
     assert len(labels) == 1
     assert labels[0] == "mylabel"
+
+
+def test_base__fill_in_indicator_nodes():
+    """Test that we can fill in indicator nodes"""
+    J = np.array([
+        [0, 1, 0],
+        [0, 0, 1],
+        [0, 0, 0]
+    ])
+    bmodel = Bmodel(
+        J=J,
+        node_labels=["a", "b", "c"],
+        indicator_nodes=["a"]
+    )
+
+    # get some steady states
+    bmodel.runs(20)
+
+    # erase indicator nodes, fill in indicator nodes, and make sure nothing else changed
+    for t in range(len(bmodel.steady_states)):
+        initial_condition = bmodel.steady_states.values[t]
+        initial_condition[bmodel._indicator_idx] = 0
+        ic = bmodel._parse_initial_condition(initial_condition)
+        ic_filled = bmodel._fill_in_indicator_nodes(ic)
+        for i, (a, b) in enumerate(zip(ic, ic_filled)):
+            if i in bmodel._indicator_idx:
+                assert a == 0
+                assert b in [-1, 1]
+            else:
+                assert a == b

@@ -204,7 +204,11 @@ class Bmodel():
         assert switch_to is not None
         assert hold in [False, True]
 
+        # parse the initial condition
         ic = self._parse_initial_condition(initial_condition)
+        # fill in the indicator nodes
+        ic = self._fill_in_indicator_nodes(ic)
+
         # check that we are switching to ON or OFF
         assert switch_to in ["ON", "OFF"]
         # check that the state is steady

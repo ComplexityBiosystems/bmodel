@@ -199,7 +199,7 @@ def test_base_bmodel_hold():
 def test_base_bmodel_no_hold():
     """Test the no hold option"""
     n_nodes = 12
-    n_runs_pert = 4
+    n_runs_pert = 16
     bmodel = Bmodel(J=random_interaction_matrix(N=n_nodes))
     bmodel.runs(16)
     hold = False

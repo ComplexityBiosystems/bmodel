@@ -10,6 +10,7 @@ from typing import Sequence, List
 
 from .utils import check_interaction_matrix
 from .io import topo2interaction
+from .io import edgelist2interaction
 from .rules import majority
 from .rules import majority_fast
 from .exceptions import IndicatorError
@@ -95,6 +96,11 @@ class Bmodel():
     @staticmethod
     def from_topo(topo_file, maxT=1000):
         J, node_labels = topo2interaction(path=topo_file)
+        return Bmodel(J=J, node_labels=node_labels, maxT=maxT)
+
+    @staticmethod
+    def from_edgelist(csv_file, maxT=1000):
+        J, node_labels = edgelist2interaction(path=csv_file)
         return Bmodel(J=J, node_labels=node_labels, maxT=maxT)
 
     def runs(self, n_runs=100, fast=False):

@@ -1,0 +1,5 @@
+from,to,type
+A,B,-1
+B,A,-1
+A,A,1
+B,B,1

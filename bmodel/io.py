@@ -82,7 +82,7 @@ def edgelist2interaction(
     assert np.all(table.columns == np.array(header))
 
     # deal with node labels
-    from_field, to_field, type_filed = header
+    from_field, to_field, _ = header
     tmp = table[[from_field, to_field]].values.reshape(-1)
     node_labels = sorted(list(set(tmp)))
     N = len(node_labels)

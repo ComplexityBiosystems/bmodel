@@ -26,7 +26,7 @@ def topo2interaction(path):
     """
     # check topo file is fine
     assert os.path.isfile(path)
-    table = pd.read_table(path, sep=" ")
+    table = pd.read_csv(path, sep=" ")
     assert np.all(table.columns == np.array(["Source", "Target", "Type"]))
 
     # deal with node labels

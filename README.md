@@ -90,7 +90,7 @@ loads the EMT-MET model used in (Font-Clos et al, 2018). The rest of pathways ar
 Thus if you want to load a smaller model such as *NP63* which has only 6 nodes and 9 interactions, you can simply do:
 
 ```python
-# load the EMT-MET pathway from (Font-Clos et al, 2018)
+# load a small NP63 regulatory circuit
 bmodel = Bmodel.from_library("NP63")
 ```
 

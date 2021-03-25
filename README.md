@@ -23,7 +23,7 @@ To make sure the package runs correctly in your system, run
 pytest -v
 ```
 
-## Usage
+## Basic Usage
 To create a simple Boolean model we just need an interaction matrix $J$ and some labels for the nodes. The base `Bmodel` class is instantiated as follows:
 ```python
 import numpy as np
@@ -49,7 +49,7 @@ bmodel.runs(n_runs=100, fast=False)
 ```
 will run 100 simulations, starting with random initial conditions. The reached steady states are conveniently stored in a dataframe as an attribute:
 ```python
-bmodel.stead_states
+bmodel.steady_states
 ```
 
 When the option `fast` is set to `False`, the code is slower but stores more data. For instance, the *energy* of the steady states has already been calculated and is stored as an attribute
@@ -58,4 +58,52 @@ When the option `fast` is set to `False`, the code is slower but stores more dat
 bmodel.energies
 ```
 If instead we set the `fast` option to `True`, the code is much faster but stores only the steady states. This can be useful when exploring large models that have a very large number of steady states. 
+
+```python
+bmodel.runs(n_runs=1000, fast=True)
+```
+
+Notice that calling `.runs()` a second time will append to the steady states you already found!
+
+## Using pathways from the bmodel library
+The `bmodel` package comes with a set of ready-to-use EMT-related pathways, which can be loaded with a one-liner. For instance
+```python
+# load the EMT-MET pathway from (Font-Clos et al, 2018)
+bmodel = Bmodel.from_library("EMT_MET")
+```
+loads the EMT-MET model used in (Font-Clos et al, 2018). The rest of pathways are smaller in size and some of them have been studied in (Kishore et al, 2019):
+| Name         | Number of nodes | Number of edges |
+| ------------ | --------------- | --------------- |
+| EMT_MET      | 72              | 142             |
+| EMT_RACIPE   | 22              | 82              |
+| repressors_5 | 10              | 18              |
+| OVOL2_CBS    | 9               | 20              |
+| OVOL2_Jia    | 9               | 17              |
+| NRF2         | 8               | 16              |
+| OVOL2_Jia_2  | 8               | 15              |
+| NP63         | 6               | 9               |
+| EMT_core     | 6               | 12              |
+| miR145OCT4   | 5               | 10              |
+| OVOL2        | 4               | 9               |
+| GRHL2        | 4               | 7               |
+
+Thus if you want to load a smaller model such as *NP63* which has only 6 nodes and 9 interactions, you can simply do:
+
+```python
+# load the EMT-MET pathway from (Font-Clos et al, 2018)
+bmodel = Bmodel.from_library("NP63")
+```
+
+
+## Advanced Usage
+If you want to work with your own models, you might want to load them from a text file. As of today, `bmodel` can read `.topo` files and more generic `.csv` files containing the list of interactions. The syntax for those is similar:
+
+```python
+# load from .topo file
+bmodel = Bmodel.from_topo("path/to/file.topo")
+
+# load from .csv file
+bmodel = Bmodel.from_edgelist("path/to/file.csv")
+```
+and the expected formatting of the text files is specified in the `topo2interaction` and `edgelist2interaction` docstrings of the [io](bmodel/io.py) submodule.
 

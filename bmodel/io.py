@@ -67,7 +67,7 @@ def edgelist2interaction(
     pos_symb : int, optional
         Symbol used to represent positive interactions in csv file, by default 1
     neg_symb : int, optional
-        Symbol used to represent negative interactions in csv file, by default 1
+        Symbol used to represent negative interactions in csv file, by default -1
 
     Returns
     -------

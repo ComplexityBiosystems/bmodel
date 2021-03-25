@@ -15,11 +15,8 @@ from .rules import majority
 from .rules import majority_fast
 from .exceptions import IndicatorError
 
-"""
-    Create a boolean model instance.
-
-
-    """
+from . import __AVAILABLE_PATHWAYS__
+from . import __TOPO_FILES_DIR__
 
 
 class Bmodel():
@@ -102,6 +99,12 @@ class Bmodel():
     def from_edgelist(csv_file, maxT=1000):
         J, node_labels = edgelist2interaction(path=csv_file)
         return Bmodel(J=J, node_labels=node_labels, maxT=maxT)
+
+    @staticmethod
+    def from_library(pathway):
+        assert pathway in __AVAILABLE_PATHWAYS__, f"The specified pathway {pathway} is not part of the library of default pathways."
+        path_to_pathway = __TOPO_FILES_DIR__ / (pathway + ".topo")
+        return Bmodel.from_topo(path_to_pathway)
 
     def runs(self, n_runs=100, fast=False):
         """Find many steady states starting from random initial conditions."""

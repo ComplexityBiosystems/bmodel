@@ -1,6 +1,6 @@
-from distutils.core import setup
+from setuptools import setup
 
 setup(name='bmodel',
-      version='0.1',
+      version='1.0',
       py_modules=['bmodel'],
       )

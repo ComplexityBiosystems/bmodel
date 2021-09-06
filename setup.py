@@ -1,6 +1,6 @@
-from setuptools import setup
+import setuptools
 
-setup(name='bmodel',
-      version='1.0',
-      py_modules=['bmodel'],
-      )
+setuptools.setup(name='bmodel',
+                 version='1.0.0',
+                 packages=["bmodel"]
+                 )

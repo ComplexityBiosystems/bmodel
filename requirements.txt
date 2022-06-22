@@ -15,7 +15,7 @@ numba == 0.43.1
 # tests/test_rules_majority.py: 5
 # tests/test_rules_majority_fast.py: 5
 # tests/test_utils.py: 7
-numpy == 1.18.1
+numpy == 1.22.0
 
 # bmodel/base.py: 8
 # bmodel/io.py: 8
